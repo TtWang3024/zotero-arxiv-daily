@@ -183,12 +183,68 @@ class ArxivPaper:
             if match:
                 conclusion = match.group(0)
         llm = get_llm()
-        prompt = """Given the title, abstract, introduction and the conclusion (if any) of a paper in latex format, generate a one-sentence TLDR summary in __LANG__:
-        
-        \\title{__TITLE__}
-        \\begin{abstract}__ABSTRACT__\\end{abstract}
-        __INTRODUCTION__
-        __CONCLUSION__
+        prompt = """
+You are an expert research assistant specializing in:
+DFT and electronic-structure methods,
+molecular simulation (MD, MC, HPMC, coarse-grained models),
+crystal structure prediction (CSP) and polymorph modelling,
+symmetry and unit-cell detection,
+machine learning for molecular and materials modelling,
+solvent effects on crystals and crystal energies,
+and porous / molecular materials.
+
+You are given the TITLE, ABSTRACT, INTRODUCTION and CONCLUSION (if any) of a paper
+in LaTeX-like format. Using ONLY the information provided (you may infer method
+*type* at a high level, but must not fabricate specific algorithmic details),
+produce a precise, structured summary in __LANG__.
+
+Follow this structure exactly:
+
+1. **TL;DR (2–3 sentences):**
+   A concise description of the main idea, method category, and contribution.
+
+2. **Research Problem:**
+   What problem the authors aim to solve and why it matters.
+
+3. **Method (inferred if necessary):**
+   Classify the method into one or more of the following categories and add a short explanation:
+   - DFT / electronic-structure methods
+   - ab initio MD / AIMD
+   - classical MD / MC / HPMC / statistical mechanics
+   - coarse-grained or multiscale modelling
+   - CSP / structure search / polymorph prediction
+   - ML model (GNN, transformer, diffusion, force field, property predictor)
+   - symmetry / space-group / unit-cell analysis
+   - solvent or solvation-energy modelling
+   - other (specify briefly)
+
+4. **Conclusion (1–2 sentences):**
+   Summarize what the authors claim to have achieved or demonstrated. If the text is vague,
+   give a high-level conclusion and say that details are unclear from the abstract.
+
+5. **Key Contributions (bullet points):**
+   - What is new or original?
+   - What improves over existing work (accuracy, efficiency, scalability, robustness, etc.)?
+   - Any new datasets, benchmarks, or software, if mentioned.
+
+6. **Relevance to Tingting’s Research (High / Medium / Low):**
+   Rate relevance based on these areas:
+   DFT, CSP, MD/MC or HPMC simulation, coarse-grained modelling, solvent effects,
+   symmetry and unit-cell tools, porous / molecular materials, or ML for molecular simulation.
+   Give ONE short sentence explaining the rating.
+
+7. **Potential Impact (1 sentence):**
+   State what this work enables or improves in practice.
+
+Now read the following LaTeX content and produce the structured summary in __LANG__:
+
+\\title{__TITLE__}
+\\begin{abstract}
+__ABSTRACT__
+\\end{abstract}
+
+__INTRODUCTION__
+__CONCLUSION__
         """
         prompt = prompt.replace('__LANG__', llm.lang)
         prompt = prompt.replace('__TITLE__', self.title)
@@ -206,7 +262,7 @@ class ArxivPaper:
             messages=[
                 {
                     "role": "system",
-                    "content": "You are an assistant who perfectly summarizes scientific paper, and gives the core idea of the paper to the user.",
+                    "content": "You are an expert assistant for computational chemistry and materials modelling papers (DFT, CSP, MD/MC, coarse-grained models, symmetry, solvent effects, ML for materials). You summarise papers accurately and never invent unsupported details.",
                 },
                 {"role": "user", "content": prompt},
             ]
