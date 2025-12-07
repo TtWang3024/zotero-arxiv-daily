@@ -139,7 +139,22 @@ def render_email(papers:list[ArxivPaper]):
                 affiliations += ', ...'
         else:
             affiliations = 'Unknown Affiliation'
-        parts.append(get_block_html(p.title, authors,rate,p.arxiv_id ,p.tldr, p.pdf_url, p.code_url, affiliations))
+
+        # ✨ 关键改动：把 TLDR 中的换行替换为 <br>，让 HTML 显示出来
+        tldr_html = p.tldr.replace('\n', '<br>\n')
+
+        parts.append(
+            get_block_html(
+                p.title,
+                authors,
+                rate,
+                p.arxiv_id,
+                tldr_html,      # 用处理过的 HTML 文本
+                p.pdf_url,
+                p.code_url,
+                affiliations
+            )
+        )
         time.sleep(10)
 
     content = '<br>' + '</br><br>'.join(parts) + '</br>'
