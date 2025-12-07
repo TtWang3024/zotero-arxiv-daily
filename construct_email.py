@@ -102,27 +102,53 @@ def get_block_html(title:str, authors:str, rate:str,arxiv_id:str, abstract:str, 
 """
     return block_template.format(title=title, authors=authors,rate=rate,arxiv_id=arxiv_id, abstract=abstract, pdf_url=pdf_url, code=code, affiliations=affiliations)
 
-def get_stars(score:float):
+def get_stars(score: float | None):
+    # 没有得分的情况
+    if score is None:
+        return '<span style="font-size: 0.9em; color: #555;">Relevance: N/A</span>'
+
     full_star = '<span class="full-star">⭐</span>'
     half_star = '<span class="half-star">⭐</span>'
-    low = 6
-    high = 8
-    if score <= low:
-        return ''
-    elif score >= high:
-        return full_star * 5
+
+    # 自动适配分数范围：
+    # 如果 score > 1，就当它是 0–10 区间；否则当它是 0–1 区间
+    if score > 1:
+        s = max(0.0, min(score, 10.0)) / 10.0   # 映射到 0–1
     else:
-        interval = (high-low) / 10
-        star_num = math.ceil((score-low) / interval)
-        full_star_num = int(star_num/2)
-        half_star_num = star_num - full_star_num * 2
-        return '<div class="star-wrapper">'+full_star * full_star_num + half_star * half_star_num + '</div>'
+        s = max(0.0, min(score, 1.0))           # 已经是 0–1
+
+    # 映射到 0–5 星
+    star_value = s * 5
+    full_star_num = int(star_value)
+    half_star_num = 1 if (star_value - full_star_num) >= 0.5 and full_star_num < 5 else 0
+
+    # 文本等级：High / Medium / Low
+    if s >= 0.7:
+        level = "High"
+    elif s >= 0.4:
+        level = "Medium"
+    else:
+        level = "Low"
+
+    stars_html = full_star * full_star_num + half_star * half_star_num
+
+    return (
+        f'<div class="star-wrapper">{stars_html}</div>'
+        f'<span style="font-size: 0.85em; color: #555;"> '
+        f'({level}, score={score:.2f})</span>'
+    )
 
 
 def render_email(papers:list[ArxivPaper]):
     parts = []
     if len(papers) == 0 :
         return framework.replace('__CONTENT__', get_empty_html())
+    
+  # ✨ 按 score 从高到低排序（None 放到最后）
+    papers = sorted(
+        papers,
+        key=lambda p: (p.score is None, -(p.score or 0))
+    )
     
     for p in tqdm(papers,desc='Rendering Email'):
         rate = get_stars(p.score)
