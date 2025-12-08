@@ -59,34 +59,73 @@ def filter_corpus(corpus:list[dict], pattern:str) -> list[dict]:
     os.remove(filename)
     return new_corpus
 
+ARXIV_API_ERROR = False  # 是否在本次运行中遇到过 arxiv.HTTPError
 
-def get_arxiv_paper(query:str, debug:bool=False) -> list[ArxivPaper]:
-    client = arxiv.Client(num_retries=10,delay_seconds=10)
+def get_arxiv_paper(query: str, debug: bool = False) -> list[ArxivPaper]:
+    client = arxiv.Client(num_retries=10, delay_seconds=10)
+
     feed = feedparser.parse(f"https://rss.arxiv.org/atom/{query}")
     if 'Feed error for query' in feed.feed.title:
         raise Exception(f"Invalid ARXIV_QUERY: {query}.")
+
     if not debug:
-        papers = []
-        all_paper_ids = [i.id.removeprefix("oai:arXiv.org:") for i in feed.entries if i.arxiv_announce_type == 'new']
-        bar = tqdm(total=len(all_paper_ids),desc="Retrieving Arxiv papers")
-        for i in range(0,len(all_paper_ids),20):
-            search = arxiv.Search(id_list=all_paper_ids[i:i+20])
-            batch = [ArxivPaper(p) for p in client.results(search)]
+        papers: list[ArxivPaper] = []
+        all_paper_ids = [
+            i.id.removeprefix("oai:arXiv.org:")
+            for i in feed.entries
+            if i.arxiv_announce_type == 'new'
+        ]
+
+        bar = tqdm(total=len(all_paper_ids), desc="Retrieving Arxiv papers")
+
+        for i in range(0, len(all_paper_ids), 20):
+            batch_ids = all_paper_ids[i:i + 20]
+            search = arxiv.Search(id_list=batch_ids)
+
+            try:
+                # 这里可能会抛 arxiv.HTTPError(429/503)
+                results = list(client.results(search))
+            except arxiv.HTTPError as e:
+                global ARXIV_API_ERROR
+                ARXIV_API_ERROR = True
+                logger.error(
+                    f"Arxiv API failed when fetching batch {i // 20} "
+                    f"(ids={batch_ids}): {e}"
+                )
+                # 如果一篇都还没拿到，就直接返回空列表，
+                # 让上层当作“今天没有新论文 / API 出错”处理
+                if not papers:
+                    bar.close()
+                    return []
+                # 如果已经拿到部分结果，就停止继续请求，返回已有的
+                break
+
+            batch = [ArxivPaper(p) for p in results]
             bar.update(len(batch))
             papers.extend(batch)
+
         bar.close()
 
     else:
-        logger.debug("Retrieve 5 arxiv papers regardless of the date.")
-        search = arxiv.Search(query='cat:cs.AI', sort_by=arxiv.SortCriterion.SubmittedDate)
-        papers = []
-        for i in client.results(search):
-            papers.append(ArxivPaper(i))
-            if len(papers) == 5:
-                break
+        logger.debug("Retrieve 5 arxiv papers regardless of the date (debug mode).")
+        search = arxiv.Search(
+            query="cat:cs.AI",
+            sort_by=arxiv.SortCriterion.SubmittedDate,
+        )
+        papers: list[ArxivPaper] = []
+
+        try:
+            for result in client.results(search):
+                papers.append(ArxivPaper(result))
+                if len(papers) == 5:
+                    break
+        except arxiv.HTTPError as e:
+            global ARXIV_API_ERROR
+            ARXIV_API_ERROR = True
+            logger.error(f"Arxiv API failed in debug mode: {e}")
+            papers = []
 
     return papers
-
 
 
 parser = argparse.ArgumentParser(description='Recommender system for academic papers')
@@ -177,10 +216,23 @@ if __name__ == '__main__':
         logger.info(f"Remaining {len(corpus)} papers after filtering.")
     logger.info("Retrieving Arxiv papers...")
     papers = get_arxiv_paper(args.arxiv_query, args.debug)
+    
     if len(papers) == 0:
-        logger.info("No new papers found. Yesterday maybe a holiday and no one submit their work :). If this is not the case, please check the ARXIV_QUERY.")
+        if ARXIV_API_ERROR:
+            logger.warning(
+                "No papers were retrieved from arXiv because the API returned "
+                "errors (429/503). Treating this as 'no new papers' for today."
+            )
+        else:
+            logger.info(
+                "No new papers found. Maybe yesterday was a holiday and nobody "
+                "submitted anything :). If this is not the case, please check "
+                "the ARXIV_QUERY."
+            )
+    
         if not args.send_empty:
-          exit(0)
+            sys.exit(0)
+            
     else:
         logger.info("Reranking papers...")
         papers = rerank_paper(papers, corpus)
