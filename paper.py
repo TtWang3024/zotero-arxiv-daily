@@ -51,6 +51,8 @@ class ArxivPaper:
 
         return pdf_url
         
+    _PWC_SESSION: Optional[requests.Session] = None  # 类级单例
+
     @staticmethod
     def _make_session() -> requests.Session:
         s = requests.Session()
@@ -70,10 +72,16 @@ class ArxivPaper:
         s.headers.update({"User-Agent": "zotero-arxiv-daily/1.0 (contact: you@example.com)"})
         return s
 
+    @classmethod
+    def _session(cls) -> requests.Session:
+        if cls._PWC_SESSION is None:
+            cls._PWC_SESSION = cls._make_session()
+        return cls._PWC_SESSION
+
     @staticmethod
     def _get_json(s: requests.Session, url: str) -> Optional[dict[str, Any]]:
         try:
-            r = s.get(url, timeout=(5, 20))  # (connect, read)
+            r = s.get(url, timeout=(5, 15))  # (connect, read)
         except requests.RequestException as e:
             logger.debug(f"Request failed: url={url} err={e}")
             return None
@@ -95,7 +103,7 @@ class ArxivPaper:
 
     @cached_property
     def code_url(self) -> Optional[str]:
-        s = self._make_session()
+        s = self._session()
         paper_list = self._get_json(s, f"https://paperswithcode.com/api/v1/papers/?arxiv_id={self.arxiv_id}")
         
         if not paper_list or paper_list.get("count", 0) == 0:
