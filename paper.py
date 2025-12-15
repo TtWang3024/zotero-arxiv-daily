@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Any
 from functools import cached_property
 from tempfile import TemporaryDirectory
 import arxiv
@@ -7,11 +7,12 @@ import re
 import time
 from llm import get_llm
 import requests
-from requests.adapters import HTTPAdapter, Retry
+from requests.adapters import HTTPAdapter
 from loguru import logger
 import tiktoken
 from contextlib import ExitStack
 from urllib.error import HTTPError
+from urllib3.util.retry import Retry
 
 
 
@@ -49,30 +50,65 @@ class ArxivPaper:
         self._paper.pdf_url = pdf_url
 
         return pdf_url
+        
+    @staticmethod
+    def _make_session() -> requests.Session:
+        s = requests.Session()
+        retries = Retry(
+            total=5,
+            connect=5,
+            read=5,
+            backoff_factor=0.5,
+            status_forcelist=(429, 500, 502, 503, 504),
+            allowed_methods=("GET",),
+            respect_retry_after_header=True,
+            raise_on_status=False,
+        )
+        adapter = HTTPAdapter(max_retries=retries, pool_connections=10, pool_maxsize=10)
+        s.mount("https://", adapter)
+        s.mount("http://", adapter)
+        s.headers.update({"User-Agent": "zotero-arxiv-daily/1.0 (contact: you@example.com)"})
+        return s
+
+    @staticmethod
+    def _get_json(s: requests.Session, url: str) -> Optional[dict[str, Any]]:
+        try:
+            r = s.get(url, timeout=(5, 20))  # (connect, read)
+        except requests.RequestException as e:
+            logger.debug(f"Request failed: url={url} err={e}")
+            return None
     
+        ct = (r.headers.get("Content-Type") or "").lower()
+        if r.status_code != 200:
+            logger.debug(f"Non-200: url={url} status={r.status_code} ct={ct} body={r.text[:200]!r}")
+            return None
+    
+        if "application/json" not in ct:
+            logger.debug(f"Non-JSON: url={url} status=200 ct={ct} body={r.text[:200]!r}")
+            return None
+    
+        try:
+            return r.json()
+        except ValueError as e:
+            logger.debug(f"JSON decode failed: url={url} status=200 ct={ct} err={e} body={r.text[:200]!r}")
+            return None
+
     @cached_property
     def code_url(self) -> Optional[str]:
-        s = requests.Session()
-        retries = Retry(total=5, backoff_factor=0.1)
-        s.mount('https://', HTTPAdapter(max_retries=retries))
-        try:
-            paper_list = s.get(f'https://paperswithcode.com/api/v1/papers/?arxiv_id={self.arxiv_id}').json()
-        except Exception as e:
-            logger.debug(f'Error when searching {self.arxiv_id}: {e}')
+        s = self._make_session()
+        paper_list = self._get_json(s, f"https://paperswithcode.com/api/v1/papers/?arxiv_id={self.arxiv_id}")
+        
+        if not paper_list or paper_list.get("count", 0) == 0:
             return None
+    
+        paper_id = paper_list["results"][0]["id"]
+    
+        repo_list = self._get_json(s, f"https://paperswithcode.com/api/v1/papers/{paper_id}/repositories/")
+        if not repo_list or repo_list.get("count", 0) == 0:
+            return None
+    
+        return repo_list["results"][0].get("url")
 
-        if paper_list.get('count',0) == 0:
-            return None
-        paper_id = paper_list['results'][0]['id']
-
-        try:
-            repo_list = s.get(f'https://paperswithcode.com/api/v1/papers/{paper_id}/repositories/').json()
-        except Exception as e:
-            logger.debug(f'Error when searching {self.arxiv_id}: {e}')
-            return None
-        if repo_list.get('count',0) == 0:
-            return None
-        return repo_list['results'][0]['url']
     
     @cached_property
     def tex(self) -> Optional[dict[str, str]]:
