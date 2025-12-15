@@ -260,13 +260,13 @@ produce a precise, structured summary in __LANG__.
 
 Follow this structure exactly:
 
-1. **TL;DR (2–3 sentences):**
+**TL;DR (2–3 sentences):**
    A concise description of the main idea, method category, and contribution.
 
-2. **Research Problem:**
+**Research Problem:**
    What problem the authors aim to solve and why it matters.
 
-3. **Method (inferred if necessary):**
+**Method (inferred if necessary):**
    Classify the method into one or more of the following categories and add a short explanation:
    - DFT / electronic-structure methods
    - ab initio MD / AIMD
@@ -278,22 +278,22 @@ Follow this structure exactly:
    - solvent or solvation-energy modelling
    - other (specify briefly)
 
-4. **Conclusion (1–2 sentences):**
+**Conclusion (1–2 sentences):**
    Summarize what the authors claim to have achieved or demonstrated. If the text is vague,
    give a high-level conclusion and say that details are unclear from the abstract.
 
-5. **Key Contributions (bullet points):**
+**Key Contributions (bullet points):**
    - What is new or original?
    - What improves over existing work (accuracy, efficiency, scalability, robustness, etc.)?
    - Any new datasets, benchmarks, or software, if mentioned.
 
-6. **Relevance to Tingting’s Research (High / Medium / Low):**
+**Relevance to My Research (High / Medium / Low):**
    Rate relevance based on these areas:
    DFT, CSP, MD/MC or HPMC simulation, coarse-grained modelling, solvent effects,
    symmetry and unit-cell tools, porous / molecular materials, or ML for molecular simulation.
    Give ONE short sentence explaining the rating.
 
-7. **Potential Impact (1 sentence):**
+**Potential Impact (1 sentence):**
    State what this work enables or improves in practice.
 
 Now read the following LaTeX content and produce the structured summary in __LANG__:
