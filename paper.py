@@ -101,21 +101,31 @@ class ArxivPaper:
             logger.debug(f"JSON decode failed: url={url} status=200 ct={ct} err={e} body={r.text[:200]!r}")
             return None
 
+    _CODE_URL_CACHE: dict[str, Optional[str]] = {}
+
+
     @cached_property
     def code_url(self) -> Optional[str]:
+        cache = type(self)._CODE_URL_CACHE  
+
+        if self.arxiv_id in cache:
+            return cache[self.arxiv_id]
+    
         s = self._session()
         paper_list = self._get_json(s, f"https://paperswithcode.com/api/v1/papers/?arxiv_id={self.arxiv_id}")
-        
         if not paper_list or paper_list.get("count", 0) == 0:
+            cache[self.arxiv_id] = None     
             return None
     
         paper_id = paper_list["results"][0]["id"]
-    
         repo_list = self._get_json(s, f"https://paperswithcode.com/api/v1/papers/{paper_id}/repositories/")
         if not repo_list or repo_list.get("count", 0) == 0:
+            cache[self.arxiv_id] = None    
             return None
     
-        return repo_list["results"][0].get("url")
+        url = repo_list["results"][0].get("url")
+        cache[self.arxiv_id] = url        
+        return url
 
     
     @cached_property
