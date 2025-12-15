@@ -62,6 +62,7 @@ def filter_corpus(corpus:list[dict], pattern:str) -> list[dict]:
 ARXIV_API_ERROR = False  # 是否在本次运行中遇到过 arxiv.HTTPError
 
 def get_arxiv_paper(query: str, debug: bool = False) -> list[ArxivPaper]:
+    global ARXIV_API_ERROR
     client = arxiv.Client(num_retries=10, delay_seconds=10)
 
     feed = feedparser.parse(f"https://rss.arxiv.org/atom/{query}")
@@ -86,7 +87,6 @@ def get_arxiv_paper(query: str, debug: bool = False) -> list[ArxivPaper]:
                 # 这里可能会抛 arxiv.HTTPError(429/503)
                 results = list(client.results(search))
             except arxiv.HTTPError as e:
-                global ARXIV_API_ERROR
                 ARXIV_API_ERROR = True
                 logger.error(
                     f"Arxiv API failed when fetching batch {i // 20} "
@@ -120,7 +120,6 @@ def get_arxiv_paper(query: str, debug: bool = False) -> list[ArxivPaper]:
                 if len(papers) == 5:
                     break
         except arxiv.HTTPError as e:
-            global ARXIV_API_ERROR
             ARXIV_API_ERROR = True
             logger.error(f"Arxiv API failed in debug mode: {e}")
             papers = []
