@@ -374,6 +374,7 @@ __CONCLUSION__
                     "role": "system",
                     "content": "You are a research assistant. You judge whether a paper is useful for the user's specific project and extract only the concrete, transferable parts. You never invent details, and you keep output short.",
                 {"role": "user", "content": prompt},
+                }
             ]
         )
         return tldr
