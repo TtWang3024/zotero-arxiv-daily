@@ -367,14 +367,14 @@ __CONCLUSION__
         prompt_tokens = enc.encode(prompt)
         prompt_tokens = prompt_tokens[:4000]  # truncate to 4000 tokens
         prompt = enc.decode(prompt_tokens)
-        
+
         tldr = llm.generate(
             messages=[
                 {
                     "role": "system",
                     "content": "You are a research assistant. You judge whether a paper is useful for the user's specific project and extract only the concrete, transferable parts. You never invent details, and you keep output short.",
+                },
                 {"role": "user", "content": prompt},
-                }
             ]
         )
         return tldr
