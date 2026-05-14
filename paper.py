@@ -308,59 +308,44 @@ class ArxivPaper:
                 conclusion = match.group(0)
         llm = get_llm()
         prompt = """
-You are an expert research assistant specializing in:
-DFT and electronic-structure methods,
-molecular simulation (MD, MC, HPMC, coarse-grained models),
-crystal structure prediction (CSP) and polymorph modelling,
-symmetry and unit-cell detection,
-machine learning for molecular and materials modelling,
-solvent effects on crystals and crystal energies,
-and porous / molecular materials.
+My research areas:
+- Space group prediction algorithms
+- Molecular crystal CSP (crystal structure prediction)
+- Solvent effects on crystals
+- Coarse-grained modelling
+- HOOMD-blue simulations
+- Monte Carlo with patchy particle models
 
 You are given the TITLE, ABSTRACT, INTRODUCTION and CONCLUSION (if any) of a paper
-in LaTeX-like format. Using ONLY the information provided (you may infer method
-*type* at a high level, but must not fabricate specific algorithmic details),
-produce a precise, structured summary in __LANG__.
+in LaTeX-like format. Your job is NOT to summarise the paper. Your job is to tell me,
+concretely, whether and how this paper is useful for MY research above.
 
-Follow this structure exactly:
+Rules:
+- Be specific. Name techniques, algorithms, datasets, or code if mentioned.
+- If something is not in the text, say "not specified" — do NOT invent.
+- Keep it short. No filler, no restating the abstract.
+- Output in __LANG__.
 
-**TL;DR (2–3 sentences):**
-   A concise description of the main idea, method category, and contribution.
+Produce EXACTLY this structure:
 
-**Research Problem:**
-   What problem the authors aim to solve and why it matters.
+**Usefulness: <High | Medium | Low | Skip>**
+One sentence: which of my research areas it touches and why this rating.
+- High = method / code / dataset directly transferable to my work.
+- Medium = idea is inspiring but needs adaptation.
+- Low = only useful as background.
+- Skip = unrelated to my areas.
 
-**Method (inferred if necessary):**
-   Classify the method into one or more of the following categories and add a short explanation:
-   - DFT / electronic-structure methods
-   - ab initio MD / AIMD
-   - classical MD / MC / HPMC / statistical mechanics
-   - coarse-grained or multiscale modelling
-   - CSP / structure search / polymorph prediction
-   - ML model (GNN, transformer, diffusion, force field, property predictor)
-   - symmetry / space-group / unit-cell analysis
-   - solvent or solvation-energy modelling
-   - other (specify briefly)
+**Main method (1–2 sentences):**
+What approach or framework the authors use.
 
-**Conclusion (1–2 sentences):**
-   Summarize what the authors claim to have achieved or demonstrated. If the text is vague,
-   give a high-level conclusion and say that details are unclear from the abstract.
+**What I can borrow (≤3 bullets):**
+- Concrete technique / idea / code / dataset + how I could use it in my work.
+- If nothing transferable, write a single bullet: "No direct transferable element."
 
-**Key Contributions (bullet points):**
-   - What is new or original?
-   - What improves over existing work (accuracy, efficiency, scalability, robustness, etc.)?
-   - Any new datasets, benchmarks, or software, if mentioned.
+**Novelty / highlight (1 sentence):**
+The single biggest selling point of this paper.
 
-**Relevance to My Research (High / Medium / Low):**
-   Rate relevance based on these areas:
-   DFT, CSP, MD/MC or HPMC simulation, coarse-grained modelling, solvent effects,
-   symmetry and unit-cell tools, porous / molecular materials, or ML for molecular simulation.
-   Give ONE short sentence explaining the rating.
-
-**Potential Impact (1 sentence):**
-   State what this work enables or improves in practice.
-
-Now read the following LaTeX content and produce the structured summary in __LANG__:
+Paper content:
 
 \\title{__TITLE__}
 \\begin{abstract}
@@ -370,6 +355,7 @@ __ABSTRACT__
 __INTRODUCTION__
 __CONCLUSION__
         """
+
         prompt = prompt.replace('__LANG__', llm.lang)
         prompt = prompt.replace('__TITLE__', self.title)
         prompt = prompt.replace('__ABSTRACT__', self.summary)
@@ -386,8 +372,7 @@ __CONCLUSION__
             messages=[
                 {
                     "role": "system",
-                    "content": "You are an expert assistant for computational chemistry and materials modelling papers (DFT, CSP, MD/MC, coarse-grained models, symmetry, solvent effects, ML for materials). You summarise papers accurately and never invent unsupported details.",
-                },
+                    "content": "You are a research assistant. You judge whether a paper is useful for the user's specific project and extract only the concrete, transferable parts. You never invent details, and you keep output short.",
                 {"role": "user", "content": prompt},
             ]
         )
