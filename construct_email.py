@@ -9,6 +9,7 @@ import datetime
 import time
 from loguru import logger
 import markdown
+import html as html_lib
 
 framework = """
 <!DOCTYPE HTML>
@@ -168,8 +169,7 @@ def render_email(papers:list[ArxivPaper]):
                 paper_affiliations = None
 
             if paper_affiliations is not None:
-                affiliations = paper_affiliations[:5]
-                affiliations = ', '.join(affiliations)
+                affiliations = ', '.join(html_lib.escape(a) for a in paper_affiliations[:5])
                 if len(paper_affiliations) > 5:
                     affiliations += ', ...'
             else:
@@ -206,7 +206,7 @@ def render_email(papers:list[ArxivPaper]):
         logger.warning('All papers were skipped during email rendering. Sending an empty email instead.')
         return framework.replace('__CONTENT__', get_empty_html())
 
-    content = '<br>' + '</br><br>'.join(parts) + '</br>'
+    content = '<br>'.join(parts)
     if skipped_papers:
         logger.warning(f"Skipped {len(skipped_papers)} paper(s) during rendering: {', '.join(skipped_papers)}")
     return framework.replace('__CONTENT__', content)

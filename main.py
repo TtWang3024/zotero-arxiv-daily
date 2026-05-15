@@ -177,9 +177,9 @@ def add_argument(*args, **kwargs):
     env_value = get_env(env_name)
     if env_value is not None:
         #convert env_value to the specified type
-        if kwargs.get('type') == bool:
-            env_value = env_value.lower() in ['true','1']
-        else:
+        if kwargs.get('type') == bool or kwargs.get('action') in ('store_true', 'store_false'):
+            env_value = env_value.lower() in ['true', '1']
+        elif kwargs.get('type') is not None:
             env_value = kwargs.get('type')(env_value)
         parser.set_defaults(**{arg_full_name:env_value})
 
@@ -189,7 +189,7 @@ if __name__ == '__main__':
     add_argument('--zotero_id', type=str, help='Zotero user ID')
     add_argument('--zotero_key', type=str, help='Zotero API key')
     add_argument('--zotero_ignore',type=str,help='Zotero collection to ignore, using gitignore-style pattern.')
-    add_argument('--send_empty', type=bool, help='If get no arxiv paper, send empty email',default=False)
+    add_argument('--send_empty', action='store_true', help='If get no arxiv paper, send empty email', default=False)
     add_argument('--max_paper_num', type=int, help='Maximum number of papers to recommend',default=100)
     add_argument('--arxiv_query', type=str, help='Arxiv search query')
     add_argument('--smtp_server', type=str, help='SMTP server')
@@ -199,7 +199,7 @@ if __name__ == '__main__':
     add_argument('--sender_password', type=str, help='Sender email password')
     add_argument(
         "--use_llm_api",
-        type=bool,
+        action='store_true',
         help="Use OpenAI API to generate TLDR",
         default=False,
     )
