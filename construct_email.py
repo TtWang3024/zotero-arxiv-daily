@@ -146,7 +146,7 @@ def render_email(papers:list[ArxivPaper]):
 
     papers = sorted(
         papers,
-        key=lambda p: (p.score is None, -(p.score or 0))
+        key=lambda p: (-p.usefulness, p.score is None, -(p.score or 0))
     )
 
     skipped_papers = []

@@ -380,6 +380,18 @@ __CONCLUSION__
         return tldr
 
     @cached_property
+    def usefulness(self) -> int:
+        """Parse Usefulness from tldr. Returns 3=High, 2=Medium, 1=Low, 0=Skip, -1=unknown."""
+        try:
+            text = self.tldr or ""
+        except Exception:
+            return -1
+        m = re.search(r'Usefulness[^A-Za-z]*(High|Medium|Low|Skip)', text, re.IGNORECASE)
+        if not m:
+            return -1
+        return {"high": 3, "medium": 2, "low": 1, "skip": 0}[m.group(1).lower()]
+
+    @cached_property
     def affiliations(self) -> Optional[list[str]]:
         tex = self.tex
         if not tex:  # None 或 空 dict
