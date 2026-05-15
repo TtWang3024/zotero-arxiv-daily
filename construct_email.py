@@ -151,8 +151,17 @@ def render_email(papers:list[ArxivPaper]):
     )
 
     skipped_papers = []
+    divider_inserted = False
     for p in tqdm(papers, desc='Rendering Email'):
         try:
+            if not divider_inserted and p.usefulness <= 0:
+                parts.append(
+                    '<div style="text-align:center; margin:24px 0; font-family:Arial,sans-serif;">'
+                    '<hr style="border:none; border-top:1px solid #ddd; margin-bottom:8px;">'
+                    '<span style="color:#999; font-size:13px;">— Less Relevant —</span>'
+                    '</div>'
+                )
+                divider_inserted = True
             rate = get_stars(p.score)
             author_list = [a.name for a in p.authors]
             num_authors = len(author_list)
