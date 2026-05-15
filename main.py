@@ -227,6 +227,12 @@ if __name__ == '__main__':
         help="Language of TLDR",
         default="English",
     )
+    add_argument(
+        "--research_areas",
+        type=str,
+        help="Comma-separated list of research areas used in the TLDR prompt",
+        default=None,
+    )
     parser.add_argument('--debug', action='store_true', help='Debug mode')
     args = parser.parse_args()
     assert (

@@ -3,6 +3,7 @@ from functools import cached_property
 from tempfile import TemporaryDirectory
 import arxiv
 import tarfile
+import os
 import re
 import time
 import ast
@@ -309,12 +310,7 @@ class ArxivPaper:
         llm = get_llm()
         prompt = """
 My research areas:
-- Space group prediction algorithms
-- Molecular crystal CSP (crystal structure prediction)
-- Solvent effects on crystals
-- Coarse-grained modelling
-- HOOMD-blue simulations
-- Monte Carlo with patchy particle models
+__RESEARCH_AREAS__
 
 You are given the TITLE, ABSTRACT, INTRODUCTION and CONCLUSION (if any) of a paper
 in LaTeX-like format. Your job is NOT to summarise the paper. Your job is to tell me,
@@ -356,6 +352,17 @@ __INTRODUCTION__
 __CONCLUSION__
         """
 
+        _default_areas = (
+            "Space group prediction algorithms,"
+            "Molecular crystal CSP (crystal structure prediction),"
+            "Solvent effects on crystals,"
+            "Coarse-grained modelling,"
+            "HOOMD-blue simulations,"
+            "Monte Carlo with patchy particle models"
+        )
+        _raw = os.environ.get('RESEARCH_AREAS', _default_areas)
+        _areas_bullet = '\n'.join(f'- {a.strip()}' for a in _raw.split(',') if a.strip())
+        prompt = prompt.replace('__RESEARCH_AREAS__', _areas_bullet)
         prompt = prompt.replace('__LANG__', llm.lang)
         prompt = prompt.replace('__TITLE__', self.title)
         prompt = prompt.replace('__ABSTRACT__', self.summary)
